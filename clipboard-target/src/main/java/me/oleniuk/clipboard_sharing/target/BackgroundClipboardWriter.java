@@ -20,24 +20,24 @@ public class BackgroundClipboardWriter extends Application {
     }
 
     @Override
-    public void start(Stage primaryStage) throws IOException {
+    public void start(Stage primaryStage) {
         // 1. Prevent JavaFX from closing when there are no visible windows
         Platform.setImplicitExit(false);
+        new Thread(this::startServer).start();
+    }
 
+    private void startServer() {
         try (var s = new ServerSocket(11099)) {
             System.out.println("Clipboard writer is listening to clipboard senders...");
             while (true) {
                 try (Socket incoming = s.accept()) {
                     InputStream is = incoming.getInputStream();
-                    try (var in = new Scanner(is, StandardCharsets.UTF_8)) {
-                        StringBuilder sb = new StringBuilder();
-                        while (in.hasNextLine()) {
-                            sb.append(in.nextLine());
-                        }
-                        handleNewContent(sb.toString());
-                    }
+                    handleNewContent(new String(is.readAllBytes(), StandardCharsets.UTF_8));
                 }
             }
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 

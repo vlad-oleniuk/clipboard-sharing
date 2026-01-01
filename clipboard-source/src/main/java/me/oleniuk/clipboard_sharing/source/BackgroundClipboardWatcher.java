@@ -44,7 +44,8 @@ public class BackgroundClipboardWatcher extends Application {
         if (clipboard.hasString()) {
             String currentContent = clipboard.getString();
 
-            if (!currentContent.equals(lastContent) && !currentContent.startsWith("processed: ")) {
+            if (!currentContent.equals(lastContent)) {
+                System.out.println("new content determined: " + currentContent);
                 lastContent = currentContent;
                 try {
                     sendContentClipboard(currentContent);
