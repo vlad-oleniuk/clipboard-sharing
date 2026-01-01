@@ -1,0 +1,7 @@
+*/target
+.mvn
+*/.mvn
+
+### IntelliJ IDEA ###
+.idea
+
