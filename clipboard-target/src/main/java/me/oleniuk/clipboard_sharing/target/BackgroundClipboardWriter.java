@@ -1,19 +1,19 @@
 package me.oleniuk.clipboard_sharing.target;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
-import java.util.Scanner;
-
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.scene.input.Clipboard;
-import javafx.scene.input.ClipboardContent;
 import javafx.stage.Stage;
+import org.apache.mina.core.service.IoAcceptor;
+import org.apache.mina.filter.codec.ProtocolCodecFilter;
+import org.apache.mina.filter.logging.LoggingFilter;
+import org.apache.mina.transport.socket.nio.NioSocketAcceptor;
+
+import java.io.IOException;
+import java.net.InetSocketAddress;
 
 public class BackgroundClipboardWriter extends Application {
+
+    private static final int PORT = 11099;
 
     public static void main(String[] args) {
         launch(args);
@@ -23,41 +23,18 @@ public class BackgroundClipboardWriter extends Application {
     public void start(Stage primaryStage) {
         // 1. Prevent JavaFX from closing when there are no visible windows
         Platform.setImplicitExit(false);
-        new Thread(this::startServer).start();
+        this.startServer();
     }
 
     private void startServer() {
-        try (var s = new ServerSocket(11099)) {
-            System.out.println("Clipboard writer is listening to clipboard senders...");
-            while (true) {
-                try (Socket incoming = s.accept()) {
-                    InputStream is = incoming.getInputStream();
-                    handleNewContent(new String(is.readAllBytes(), StandardCharsets.UTF_8));
-                }
-            }
+        IoAcceptor acceptor = new NioSocketAcceptor();
+        try {
+            acceptor.getFilterChain().addLast("logger", new LoggingFilter());
+            acceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new MultilineCodecFactory()));
+            acceptor.setHandler(new ClipboardWritingHandler());
+            acceptor.bind(new InetSocketAddress(PORT));
         } catch (IOException e) {
-            e.printStackTrace();
             throw new RuntimeException(e);
         }
     }
-
-    private void handleNewContent(String contentStr) {
-        System.out.println("RECEIVED CLIPBOARD CONTENT: " + contentStr);
-        Platform.runLater(() -> {
-            // 1. Get the System Clipboard
-            Clipboard clipboard = Clipboard.getSystemClipboard();
-
-            // 2. Create the content container
-            ClipboardContent content = new ClipboardContent();
-
-            // 3. Put the string into the container
-            content.putString(contentStr);
-
-            // 4. Set the clipboard content
-            clipboard.setContent(content);
-
-            System.out.println("Copied to clipboard: " + contentStr);
-        });
-    }
-
 }
