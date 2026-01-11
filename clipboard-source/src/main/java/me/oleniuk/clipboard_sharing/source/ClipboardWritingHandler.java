@@ -74,14 +74,20 @@ public class ClipboardWritingHandler extends IoHandlerAdapter {
 
             if (!currentContent.equals(lastContent)) {
                 System.out.println("new content determined: " + currentContent);
-                session.write(currentContent);
-                lastContent = currentContent;
+                if (session != null) {
+                    session.write(currentContent);
+                    lastContent = currentContent;
+                } else {
+                    System.out.println("No connection is active!!! Reconnect the source");
+                }
+
             }
         }
     }
 
     @Override
     public void sessionClosed(IoSession session) {
+        System.out.println("connection lost");
         currentSession = null;
     }
 
