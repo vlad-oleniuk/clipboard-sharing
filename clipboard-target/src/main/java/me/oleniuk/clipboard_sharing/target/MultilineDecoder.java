@@ -12,6 +12,9 @@ public class MultilineDecoder extends CumulativeProtocolDecoder {
 
     @Override
     protected boolean doDecode(IoSession session, IoBuffer in, ProtocolDecoderOutput out) throws Exception {
+        // Save the original position so we can reset if delimiter not found
+        int startPosition = in.position();
+
         // Search for the delimiter in the incoming buffer
         String currentData = in.getString(StandardCharsets.UTF_8.newDecoder());
 
@@ -25,11 +28,13 @@ public class MultilineDecoder extends CumulativeProtocolDecoder {
             // Tell MINA how many bytes we actually consumed from the buffer
             // We move the buffer position past the delimiter
             int totalBytesConsumed = (message + DELIMITER).getBytes(StandardCharsets.UTF_8).length;
-            in.position(totalBytesConsumed);
+            in.position(startPosition + totalBytesConsumed);
 
             return true; // There might be another message in the buffer
         }
 
+        // Delimiter not found - reset position so data is preserved for next call
+        in.position(startPosition);
         return false; // Not enough data yet; wait for more
     }
 }
