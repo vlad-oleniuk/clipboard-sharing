@@ -4,8 +4,6 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.stage.Stage;
 import org.apache.mina.core.future.ConnectFuture;
-import org.apache.mina.core.future.IoFuture;
-import org.apache.mina.core.future.IoFutureListener;
 import org.apache.mina.core.service.IoService;
 import org.apache.mina.core.service.IoServiceListener;
 import org.apache.mina.core.session.IdleStatus;
@@ -40,9 +38,14 @@ public class BackgroundClipboardWatcher extends Application {
         connector.setDefaultRemoteAddress(address);
         connector.addListener(new ReconnectingListener(connector));
         ConnectFuture future = connector.connect();
-        // Wait until the connection is established
         future.awaitUninterruptibly();
-        System.out.println("Clipboard watcher is running in the background...");
+        if (future.isConnected()) {
+            System.out.println("Connected to target at " + targetHost + ":11099");
+        } else {
+            Throwable cause = future.getException();
+            String reason = cause != null ? cause.getMessage() : "unknown error";
+            System.out.println("Failed to connect to " + targetHost + ":11099: " + reason);
+        }
     }
 
     private static class ReconnectingListener implements IoServiceListener {
@@ -80,23 +83,27 @@ public class BackgroundClipboardWatcher extends Application {
 
         @Override
         public void sessionClosed(IoSession ioSession) throws Exception {
-            System.out.println("session closed");
         }
 
         private void reconnect() {
             System.out.println("reconnecting...");
             ConnectFuture connectFuture = this.connector.connect();
             connectFuture.addListener(future -> {
-                    if (!((ConnectFuture) future).isConnected()) {
-                        reconnectingExecutor.schedule(ReconnectingListener.this::reconnect, 5, TimeUnit.SECONDS);
-                    }
+                ConnectFuture connectResult = (ConnectFuture) future;
+                if (connectResult.isConnected()) {
+                    System.out.println("Reconnected to target at " + connectResult.getSession().getRemoteAddress());
+                } else {
+                    Throwable cause = connectResult.getException();
+                    String reason = cause != null ? cause.getMessage() : "unknown error";
+                    System.out.println("Reconnect failed: " + reason + "; retrying in 5 seconds");
+                    reconnectingExecutor.schedule(ReconnectingListener.this::reconnect, 5, TimeUnit.SECONDS);
                 }
-            );
+            });
         }
 
         @Override
         public void sessionDestroyed(IoSession ioSession) throws Exception {
-            System.out.println("connection lost... reconnecting in 5 seconds");
+            System.out.println("Disconnected from target; reconnecting in 5 seconds");
             reconnectingExecutor.schedule(this::reconnect, 5, TimeUnit.SECONDS);
         }
     }

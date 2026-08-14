@@ -33,7 +33,9 @@ public class BackgroundClipboardWriter extends Application {
             acceptor.getFilterChain().addLast("codec", new ProtocolCodecFilter(new MultilineCodecFactory()));
             acceptor.setHandler(new ClipboardWritingHandler());
             acceptor.bind(new InetSocketAddress(PORT));
+            System.out.println("Listening for clipboard source on port " + PORT);
         } catch (IOException e) {
+            System.out.println("Failed to start clipboard target on port " + PORT + ": " + e.getMessage());
             throw new RuntimeException(e);
         }
     }

@@ -49,6 +49,7 @@ public class ClipboardWritingHandler extends IoHandlerAdapter {
 
     @Override
     public void sessionOpened(IoSession session) throws Exception {
+        System.out.println("Clipboard sync active with source at " + session.getRemoteAddress());
         this.currentSession = session;
         if (clipboardPoller == null) {
             // 2. Start the monitoring loop (polls every 200ms)
@@ -88,6 +89,7 @@ public class ClipboardWritingHandler extends IoHandlerAdapter {
 
     @Override
     public void sessionClosed(IoSession session) {
+        System.out.println("Clipboard sync inactive — source disconnected");
         currentSession = null;
     }
 
